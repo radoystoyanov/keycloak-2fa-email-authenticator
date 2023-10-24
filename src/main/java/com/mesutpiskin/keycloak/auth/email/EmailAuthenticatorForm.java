@@ -4,7 +4,7 @@ import lombok.extern.jbosslog.JBossLog;
 import org.keycloak.authentication.AuthenticationFlowContext;
 import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.AuthenticationFlowException;
-import org.keycloak.authentication.Authenticator;
+// import org.keycloak.authentication.Authenticator; // Redundant
 import org.keycloak.email.EmailException;
 import org.keycloak.email.EmailTemplateProvider;
 import org.keycloak.events.Errors;
@@ -16,15 +16,15 @@ import org.keycloak.models.utils.FormMessage;
 import org.keycloak.services.messages.Messages;
 import org.keycloak.authentication.authenticators.browser.AbstractUsernameFormAuthenticator;
 
-import jakarta.ws.rs.core.MultivaluedMap;
-import jakarta.ws.rs.core.Response;
+import javax.ws.rs.core.MultivaluedMap; // jakarta.ws.rs.core causes incompatibility
+import javax.ws.rs.core.Response; // jakarta.ws.rs.core causes incompatibility
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 @JBossLog
-public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator implements Authenticator {
+public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
 
     static final String ID = "demo-email-code-form";
 
@@ -65,8 +65,22 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator im
             return;
         }
 
-        int emailCode = ThreadLocalRandom.current().nextInt(99999999);
-        sendEmailWithCode(context.getRealm(), context.getUser(), String.valueOf(emailCode));
+        // Get the number of digits from the policy
+        int numDigits;
+        try {
+            numDigits = context.getRealm().getOTPPolicy().getDigits();
+        } catch (Exception e) {
+            // Set 8 as default value
+            numDigits = 8;
+        }
+
+        // Generate random code
+        int bound = (int) Math.pow(10, numDigits);
+        int emailCode = ThreadLocalRandom.current().nextInt(bound);
+
+        // Format the code with leading zeros when injecting into the email template
+        String format = "%" + numDigits + "d";
+        sendEmailWithCode(context.getRealm(), context.getUser(), String.format(format, emailCode));
         context.getAuthenticationSession().setAuthNote(EMAIL_CODE, Integer.toString(emailCode));
     }
 
@@ -146,7 +160,8 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator im
 
     private void sendEmailWithCode(RealmModel realm, UserModel user, String code) {
         if (user.getEmail() == null) {
-            log.warnf("Could not send access code email due to missing email. realm=%s user=%s", realm.getId(), user.getUsername());
+            log.warnf("Could not send access code email due to missing email. realm=%s user=%s", realm.getId(),
+                    user.getUsername());
             throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_USER);
         }
 
@@ -160,7 +175,8 @@ public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator im
             EmailTemplateProvider emailProvider = session.getProvider(EmailTemplateProvider.class);
             emailProvider.setRealm(realm);
             emailProvider.setUser(user);
-            // Don't forget to add the welcome-email.ftl (html and text) template to your theme.
+            // Don't forget to add the welcome-email.ftl (html and text) template to your
+            // theme.
             emailProvider.send("emailCodeSubject", subjectParams, "code-email.ftl", mailBodyAttributes);
         } catch (EmailException eex) {
             log.errorf(eex, "Failed to send access code email. realm=%s user=%s", realm.getId(), user.getUsername());
