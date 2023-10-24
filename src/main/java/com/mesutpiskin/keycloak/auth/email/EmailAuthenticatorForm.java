@@ -30,8 +30,6 @@ import java.util.Map;
 public class EmailAuthenticatorForm extends AbstractUsernameFormAuthenticator {
     private final KeycloakSession session;
 
-    static final String ID = "demo-email-code-form";
-
     public EmailAuthenticatorForm(KeycloakSession session) {
         this.session = session;
     }

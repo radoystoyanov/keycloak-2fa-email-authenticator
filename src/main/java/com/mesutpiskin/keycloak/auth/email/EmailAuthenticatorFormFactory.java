@@ -15,7 +15,7 @@ import java.util.List;
 public class EmailAuthenticatorFormFactory implements AuthenticatorFactory {
     @Override
     public String getId() {
-        return "email-authenticator";
+        return "demo-email-code-form";
     }
 
     @Override
